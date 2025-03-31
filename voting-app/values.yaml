@@ -1,0 +1,26 @@
+replicaCount: 2
+
+image:
+  vote: "samanehfa/vote"
+  worker: "samanehfa/worker"
+  result: "samanehfa/result"
+
+service:
+  vote:
+    name: "vote-service"
+    port: 80
+  result:
+    name: "result-service"
+    port: 80
+  worker:
+    name: "worker-service"
+    port: 80
+
+postgres:
+  host: "postgres-postgresql.default.svc.cluster.local"
+  userSecret: "postgres-secret"
+  database: "votes"
+
+redis:
+  host: "redis-master.default.svc.cluster.local"
+  port: 6379

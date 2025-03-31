@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote-deployment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: vote
+  template:
+    metadata:
+      labels:
+        app: vote
+    spec:
+      containers:
+      - name: vote-container
+        image: {{ .Values.image.vote }}
+        ports:
+          - containerPort: 80
+        env:
+          - name: REDIS_HOST
+            value: {{ .Values.redis.host }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-deployment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: result
+  template:
+    metadata:
+      labels:
+        app: result
+    spec:
+      containers:
+      - name: result-container
+        image: {{ .Values.image.result }}
+        ports:
+          - containerPort: 80
+        env:
+          - name: PG_HOST
+            value: {{ .Values.postgres.host }}
+          - name: PG_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgres.userSecret }}
+                key: username
+          - name: PG_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgres.userSecret }}
+                key: password
+          - name: PG_DATABASE
+            value: {{ .Values.postgres.database }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: worker-container
+        image: {{ .Values.image.worker }}
+        env:
+          - name: REDIS_HOST
+            value: {{ .Values.redis.host }}
+          - name: DB_HOST
+            value: {{ .Values.postgres.host }}
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgres.userSecret }}
+                key: username
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgres.userSecret }}
+                key: password
+          - name: DB_NAME
+            value: {{ .Values.postgres.database }}
