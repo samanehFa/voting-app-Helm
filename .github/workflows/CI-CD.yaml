@@ -51,7 +51,6 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/vote:${{ env.IMAGE_TAG }}
             ${{ secrets.DOCKER_USERNAME }}/vote:latest
 
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -67,33 +66,18 @@ jobs:
           mv ./kubectl $HOME/bin/kubectl
           echo "$HOME/bin" >> $GITHUB_PATH
 
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
       - name: Update kubeconfig for EKS
         run: |
           aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.AWS_CLUSTER }}
 
-      - name: Generate the final deployment templates
+      - name: Deploy to EKS using Helm
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gettext-base
-
-          # Define image names for each service
-          export VOTE_IMAGE="docker.io/${{ secrets.DOCKER_USERNAME }}/voting-app-vote:${{ env.IMAGE_TAG }}"
-          export RESULT_IMAGE="docker.io/${{ secrets.DOCKER_USERNAME }}/voting-app-result:${{ env.IMAGE_TAG }}"
-          export WORKER_IMAGE="docker.io/${{ secrets.DOCKER_USERNAME }}/voting-app-worker:${{ env.IMAGE_TAG }}"
-
-          # Replace placeholders in deployment templates
-          envsubst < vote-deployment.yaml > vote-deployment.yaml
-          envsubst < result-deployment.yaml > result-deployment.yaml
-          envsubst < worker-deployment.yaml > worker-deployment.yaml
-
-          # Debugging: Print final deployment files
-          echo "Final vote-deployment.yaml:"
-          cat vote-deployment.yaml
-          echo "Final result-deployment.yaml:"
-          cat result-deployment.yaml
-          echo "Final worker-deployment.yaml:"
-          cat worker-deployment.yaml
-
-      - name: Deploy to EKS
-        run: |
-          kubectl apply -f .
+          helm upgrade --install voting-app ./helm-chart \
+            --namespace default \
+            --set image.vote=${{ secrets.DOCKER_USERNAME }}/vote:${{ env.IMAGE_TAG }} \
+            --set image.worker=${{ secrets.DOCKER_USERNAME }}/worker:${{ env.IMAGE_TAG }} \
+            --set image.result=${{ secrets.DOCKER_USERNAME }}/result:${{ env.IMAGE_TAG }} \
